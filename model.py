@@ -101,3 +101,34 @@ class HierarchicalAttentionNetwork(nn.Module):
 
         scores = self.fc(docs)
         return scores, word_att_weights, sent_att_weights
+
+ if __name__ == '__main__':
+    model = HierarchicalAttentionNetwork(2, 50000, 100, {}, {'input_features':200})
+    docs = torch.load('docs.pt')                    # torch.Size([63, 27, 118])
+    doc_lengths = torch.load('doc_lengths.pt')      # torch.Size([63])
+    sent_lengths = torch.load('sent_lengths.pt')    # torch.Size([63, 27])
+    print(model)
+    """
+    HierarchicalAttentionNetwork(
+      (embedding): Embedding(50000, 100)
+      (word_level_module): EncoderWithAttention(
+        (gru): GRU(100, 100, batch_first=True, bidirectional=True)
+        (layer_norm): LayerNorm((200,), eps=1e-05, elementwise_affine=True)
+        (attention): Linear(in_features=200, out_features=200, bias=True)
+        (context_vector): Linear(in_features=200, out_features=1, bias=False)
+      )
+      (sent_level_module): EncoderWithAttention(
+        (gru): GRU(200, 100, batch_first=True, bidirectional=True)
+        (layer_norm): LayerNorm((200,), eps=1e-05, elementwise_affine=True)
+        (attention): Linear(in_features=200, out_features=200, bias=True)
+        (context_vector): Linear(in_features=200, out_features=1, bias=False)
+      )
+      (dropout): Dropout(p=0.1, inplace=False)
+      (fc): Linear(in_features=200, out_features=2, bias=True)
+    )
+    """
+    scores, word_att_weights, sent_att_weights = model(docs, doc_lengths, sent_lengths)
+    print(scores.size(), word_att_weights.size(), sent_att_weights.size())
+    ```
+    torch.Size([63, 2]), torch.Size([63, 118]), torch.Size([63, 27])
+    ```

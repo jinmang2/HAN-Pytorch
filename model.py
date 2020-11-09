@@ -23,13 +23,8 @@ class EncoderWithAttention(nn.Module):
             if key in kwargs.keys():
                 setattr(self, key, kwargs[key])
         # Encoder
-        self.gru = nn.GRU(
-            self.input_features,
-            self.hidden_dim,
-            num_layers=self.num_layers,
-            batch_first=True,
-            bidirectional=True,
-        )
+        self.gru = nn.GRU(self.input_features, self.hidden_dim, 
+            num_layers=self.num_layers, batch_first=True, bidirectional=True,)
         if self.use_layer_norm:
             self.layer_norm = nn.LayerNorm(2*self.hidden_dim, elementwise_affine=True)
         # Attention
@@ -58,10 +53,11 @@ class EncoderWithAttention(nn.Module):
 
 class HierarchicalAttentionNetwork(nn.Module):
 
-    def __init__(self, num_classes, vocab_size, emb_dim, Words, Sents, dropout=0.1):
+    def __init__(self, num_classes, vocab_size, emb_dim, Words={}, Sents={}, dropout=0.1):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, emb_dim)
         self.word_level_module = EncoderWithAttention(**Words)
+        Sents['input_features'] = Words['hidden_dim'] * 2
         self.sent_level_module = EncoderWithAttention(**Sents)
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(2*self.sent_level_module.hidden_dim, num_classes)
@@ -101,34 +97,3 @@ class HierarchicalAttentionNetwork(nn.Module):
 
         scores = self.fc(docs)
         return scores, word_att_weights, sent_att_weights
-
- if __name__ == '__main__':
-    model = HierarchicalAttentionNetwork(2, 50000, 100, {}, {'input_features':200})
-    docs = torch.load('docs.pt')                    # torch.Size([63, 27, 118])
-    doc_lengths = torch.load('doc_lengths.pt')      # torch.Size([63])
-    sent_lengths = torch.load('sent_lengths.pt')    # torch.Size([63, 27])
-    print(model)
-    """
-    HierarchicalAttentionNetwork(
-      (embedding): Embedding(50000, 100)
-      (word_level_module): EncoderWithAttention(
-        (gru): GRU(100, 100, batch_first=True, bidirectional=True)
-        (layer_norm): LayerNorm((200,), eps=1e-05, elementwise_affine=True)
-        (attention): Linear(in_features=200, out_features=200, bias=True)
-        (context_vector): Linear(in_features=200, out_features=1, bias=False)
-      )
-      (sent_level_module): EncoderWithAttention(
-        (gru): GRU(200, 100, batch_first=True, bidirectional=True)
-        (layer_norm): LayerNorm((200,), eps=1e-05, elementwise_affine=True)
-        (attention): Linear(in_features=200, out_features=200, bias=True)
-        (context_vector): Linear(in_features=200, out_features=1, bias=False)
-      )
-      (dropout): Dropout(p=0.1, inplace=False)
-      (fc): Linear(in_features=200, out_features=2, bias=True)
-    )
-    """
-    scores, word_att_weights, sent_att_weights = model(docs, doc_lengths, sent_lengths)
-    print(scores.size(), word_att_weights.size(), sent_att_weights.size())
-    ```
-    torch.Size([63, 2]), torch.Size([63, 118]), torch.Size([63, 27])
-    ```
